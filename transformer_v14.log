@@ -1,0 +1,13 @@
+TRANSFORMER v14 TRAINING LOG
+==================================================
+ЭПОХА 5: Train=$-549, OOS=$0, Best=$0, Tests=1
+
+📊 ЭПОХА 10/250 ОТЧЕТ:
+   💰 Train profit: $-455.72
+   🧪 OOS median: $0.00
+   🏆 Best OOS: $0.00
+   📈 Epsilon: 0.0335
+   🔄 Trades: 6
+   📊 OOS range: $0 to $0
+   📈 OOS tests: 1
+

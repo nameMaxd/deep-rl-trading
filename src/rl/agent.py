@@ -162,15 +162,15 @@ class Agent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
         
-        # Если долго нет улучшений, увеличиваем exploration
-        if len(self.performance_history) >= 20:
-            recent_avg = np.mean(list(self.performance_history)[-10:])
-            older_avg = np.mean(list(self.performance_history)[-20:-10])
-            
-            if recent_avg <= older_avg and self.steps - self.last_exploration_boost > 100:
-                self.epsilon = min(0.5, self.epsilon * 1.2)  # Boost exploration
-                self.last_exploration_boost = self.steps
-                print(f"🔍 Exploration boost! Epsilon: {self.epsilon:.3f}")
+        # ОТКЛЮЧАЕМ adaptive epsilon boost - он портит результаты!
+        # if len(self.performance_history) >= 20:
+        #     recent_avg = np.mean(list(self.performance_history)[-10:])
+        #     older_avg = np.mean(list(self.performance_history)[-20:-10])
+        #     
+        #     if recent_avg <= older_avg and self.steps - self.last_exploration_boost > 100:
+        #         self.epsilon = min(0.5, self.epsilon * 1.2)  # Boost exploration
+        #         self.last_exploration_boost = self.steps
+        #         print(f"🔍 Exploration boost! Epsilon: {self.epsilon:.3f}")
 
     def update(self):
         """Обновление агента после каждого шага"""
