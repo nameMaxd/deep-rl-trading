@@ -1,0 +1,4 @@
+🤖 Fixed Transformer Training Log v14 - 2025-07-11 15:09:35.881215
+Config: {'episodes': 250, 'trading_period': 120, 'window': 50, 'target_profit': 1000, 'commission': 0.0002, 'embeddings': 64, 'heads': 4, 'layers': 3, 'fwex': 256, 'dropout': 0.1, 'neurons': 256, 'lr': 0.0005, 'epsilon': 0.8, 'epsilon_min': 0.005, 'epsilon_decay': 0.9965, 'gamma': 0.95, 'memory_size': 15000, 'batch_size': 512, 'update_freq': 3}
+🔧 БЕЗ adaptive epsilon boost!
+================================================================================

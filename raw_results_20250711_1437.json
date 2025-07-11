@@ -1,0 +1,30 @@
+[
+  {
+    "script": "main_v13_lstm.py",
+    "description": "v13_LSTM - Простая LSTM архитектура",
+    "success": false,
+    "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v13_lstm.py\", line 435, in <module>\n    main() \n    ^^^^^^\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v13_lstm.py\", line 281, in main\n    train_env = Env(\n                ^^^^\nTypeError: Env.__init__() got an unexpected keyword argument 'feature_extractor'\n",
+    "duration": 3.249356269836426
+  },
+  {
+    "script": "main_v14_transformer_fixed.py",
+    "description": "v14_Transformer_Fixed - Фиксированный трансформер",
+    "success": false,
+    "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v14_transformer_fixed.py\", line 466, in <module>\n    main() \n    ^^^^^^\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v14_transformer_fixed.py\", line 310, in main\n    train_env = Env(\n                ^^^^\nTypeError: Env.__init__() got an unexpected keyword argument 'feature_extractor'\n",
+    "duration": 3.1746480464935303
+  },
+  {
+    "script": "main_v15_ssm.py",
+    "description": "v15_SSM - State Space Models (Mamba)",
+    "success": false,
+    "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v15_ssm.py\", line 595, in <module>\n    main() \n    ^^^^^^\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v15_ssm.py\", line 439, in main\n    train_env = Env(\n                ^^^^\nTypeError: Env.__init__() got an unexpected keyword argument 'feature_extractor'\n",
+    "duration": 3.204822301864624
+  },
+  {
+    "script": "main_v16_mlp.py",
+    "description": "v16_MLP - Глубокие MLP с residuals",
+    "success": false,
+    "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v16_mlp.py\", line 607, in <module>\n    main() \n    ^^^^^^\n  File \"C:\\Users\\Yurchenko\\cascadeweb\\deep-rl-trading\\main_v16_mlp.py\", line 450, in main\n    train_env = Env(\n                ^^^^\nTypeError: Env.__init__() got an unexpected keyword argument 'feature_extractor'\n",
+    "duration": 3.255190849304199
+  }
+]

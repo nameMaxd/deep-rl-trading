@@ -1,325 +1,246 @@
 from src.ml.dqtn import DQTN
-from src.rl.env import Env
-
-from tqdm import tqdm
 import numpy as np
-import random
-import pickle
 import torch
-import os
+import torch.nn.functional as F
+import random
+from collections import deque
 
 
 class Agent:
-    def __init__(
-        self,
-        model_name="transforming-stonks",
-        tickers=None,
-
-        embeddings=256,
-        layers=1,
-        heads=4,
-        fwex=128,
-        dropout=0.1,
-        neurons=1024,
-        lr=1e-4,
-        gamma=0.9,
-        mini_batch_size=16,
-
-        epsilon_max=1,
-        epsilon_min=0.005,
-        epsilon_decay=0.83,
-        discount=0.98,
-        capacity=10_000,
-
-        n_eps=1_000,
-        update_freq=500,
-        show_every=5,
-        render=True,
-
-        fee=0.005,
-        trading_period=300,
-    ):
-        """
-           Initializes the Agent with specific configuration for its trading model, learning parameters,
-           and environment settings.
-           """
-        # Set up the trading environment
-        self.env = Env(tickers, fee, trading_period)
-        self.replay_mem = ReplayMemory(capacity)
-        self.model_name = model_name
-
-        # Learning and exploration parameters
-        self.epsilon = epsilon_max
+    """Улучшенный DQN Agent с адаптивным exploration и regularization"""
+    
+    def __init__(self, obs_space, embeddings=32, heads=1, layers=1, fwex=32,
+                 dropout=0.15, neurons=64, lr=0.001, epsilon=1.0, epsilon_min=0.1, 
+                 epsilon_decay=0.995, gamma=0.95, memory_size=2000, batch_size=32,
+                 update_freq=10):
+        
+        # Параметры окружения
+        self.obs_space = obs_space
+        self.action_size = 3  # hold, buy, sell
+        
+        # Улучшенные параметры обучения
+        self.epsilon = epsilon
         self.epsilon_min = epsilon_min
-        self.decay = epsilon_decay
-        self.capacity = capacity
-        self.mini_batch_size = mini_batch_size
-
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.lr = lr
-        self.discount = discount
-
-        # Initialize neural network models for policy and target
-        self.target_net = DQTN(
-            dims=self.env.stock.obs_space.shape,
-            lr=lr,
-            dropout=dropout,
-            embeddings=embeddings,
-            layers=layers,
-            heads=heads,
-            fwex=fwex,
-            neurons=neurons,
-            gamma=gamma
-        )
-        self.policy_net = self.target_net
-
+        self.epsilon_decay = epsilon_decay
+        self.gamma = gamma
+        self.batch_size = batch_size
         self.update_freq = update_freq
-        self.n_eps = n_eps
-        self.show_every = show_every
-        self.render = render
-
-        self.random_pos = 0
-        self.random_n = 0
-
-    def learn(self, step_count):
-        """
-        Performs a single step of training using a mini-batch from the replay memory.
-        """
-        states, actions, rewards, next_states = self.replay_mem.sample(self.mini_batch_size)
-        next_states = torch.Tensor(next_states)
-        rewards = torch.Tensor(rewards).unsqueeze(-1)
-
-        current_qs = self.policy_net.forward(torch.Tensor(states))
-
-        with torch.no_grad():
-            future_qs = self.target_net.forward(next_states)
-            target_qs = rewards + self.discount * future_qs
-
-        self.policy_net.backward(current_qs, target_qs)
-
-        if step_count % self.update_freq == 0:
-            self.update_target()
-
-        return self.policy_net.loss
-
-    def train(self):
-        """
-        Conducts the training loop over a set number of episodes, managing exploration,
-        updates, and logging.
-        """
-        model_info = f"====== Model Details: {self.model_name} ======\n" \
-                     f"\033[1;37mModel Parameters:\033[0m\n" \
-                     f"  \033[1;33mEmbeddings: {self.target_net.embeddings}\033[0m\n" \
-                     f"  \033[1;33mLayers: {self.target_net.layers}\033[0m\n" \
-                     f"  \033[1;33mHeads: {self.target_net.heads}\033[0m\n" \
-                     f"  \033[1;33mFwex: {self.target_net.fwex}\033[0m\n" \
-                     f"  \033[1;33mDropout: {self.target_net.dropout}\033[0m\n" \
-                     f"  \033[1;33mNeurons: {self.target_net.neurons}\033[0m\n" \
-                     f"  \033[1;33mLearning Rate: {self.lr}\033[0m\n" \
-                     f"\n" \
-                     f"\033[1;37mRL Parameters:\033[0m\n" \
-                     f"  \033[1;36mUpdate Frequency: {self.update_freq}\033[0m\n" \
-                     f"  \033[1;36mDecay: {self.decay}\033[0m\n" \
-                     f"  \033[1;36mDiscount: {self.discount}\033[0m\n" \
-                     f"  \033[1;36mCapacity: {self.capacity}\033[0m\n" \
-                     f"\n" \
-                     f"\033[1;37mTrading Parameters:\033[0m\n" \
-                     f"  \033[1;35mFee: {self.env.fee}\033[0m\n" \
-                     "====================================="
-
-        print(model_info)
-        self.fill_memory()
-
-        path = f"models/{self.model_name}"
-
-        with open(path + ".log", "w") as f:
-            step_count = 0
-            rewards = []
-            cum_rewards = []
-            losses = []
-
-            try:
-                for ep in range(self.n_eps):
-                    done = False
-                    state = self.env.reset()
-                    loss = None
-                    action_types = []
-                    _rewards = []
-
-                    while not done:
-                        action, action_type = self.select_actions(state)
-                        next_state, _, reward, done = self.env.step(action)
-                        self.replay_mem.store(state, action, reward, next_state)
-                        loss = self.learn(step_count)
-                        action_types.append(action_type)
-                        _rewards.append(reward)
-
-                        state = next_state
-                        step_count += 1
-
-                    reward = np.round(np.sum(_rewards), 4)
-                    rewards.append(reward)
-
-                    cumulative_rewards, cumulative_reward = self.env.get_cumulative_rewards()
-
-                    cum_rewards.append(cumulative_reward)
-                    avg_reward = np.mean(rewards[-25:]).round(4)
-                    avg_cum_reward = np.mean(cum_rewards[-25:]).round(4)
-                    lr = self.target_net.optimizer.param_groups[0]['lr']
-                    loss = loss.detach().numpy().round(4)
-                    losses.append(loss)
-                    avg_loss = np.mean(losses[-25:]).round(4)
-
-                    f.write(f"{ep},{reward},{avg_reward},{cumulative_reward:.4f},{lr:.4e},{loss:.4f},{avg_loss:.4f},{self.epsilon}\n")
-                    print(f"Ep: {ep}, Reward: {reward}, \033[93mReward (avg): {avg_reward}\033[0m, "
-                          f"Performance: {cumulative_reward:.3f}, \033[92mPerformance (avg): {avg_cum_reward:.3f}\033[0m, "
-                          f"Lr: {lr:.2e}, Loss: {loss:.4f}, \033[91mLoss (avg) {avg_loss:.3f}\033[0m, Epsilon: {self.epsilon}")
-
-                    if ep % self.show_every == 0 and self.render:
-                        self.env.render(action_types)
-
-                    self.update_epsilon(ep)
-                    self.policy_net.scheduler.step()
-
-            except KeyboardInterrupt:
-                print("Training interrupted, saving model...")
-                self.save(self.model_name)
-
-        self.save(self.model_name)
-
-    def test(self):
-        rewards = []
-        p = "data/test"
-
-        for file in os.listdir(p):
-            new_path = p
-            if ".DS" not in file:
-                new_path = os.path.join(new_path, file)
-
-                file = open(new_path, "rb")
-                s = pickle.load(file)
-
-                done = False
-                state = self.env.load_stock(s)
-                reward = 0
-
-                while not done:
-                    action, action_type = self.select_actions(state)
-                    next_state, _, reward, done = self.env.step(action)
-                    state = next_state
-
-                rewards.append(reward)
-                # self.env.render(True)
-        return rewards
-
-    def select_actions(self, state):
-        """
-        Selects actions based on the current state of the environment, using an epsilon-greedy strategy for exploration.
-        """
-        epsilon = max(self.epsilon, self.epsilon_min)
-
-        if self.random_n != 0:
-            self.random_n -= 1
-            return self.random_pos - 1, 0
-        elif random.random() < epsilon:
-            # Return random trading values
-            # return [random.uniform(0, 0.1), random.uniform(0, 0.2), random.uniform(0, 0.05)]
-            self.random_n = random.sample([3, 5, 9], 1)[0]
-            self.random_pos = random.sample([1, 2], 1)[0]
-            return self.random_pos - 1, 0
-
-        self.policy_net.eval()
-        with torch.no_grad():
-            state = torch.Tensor(state).unsqueeze(0)
-            out = self.policy_net(state).squeeze()
-            self.policy_net.train()
-            return torch.argmax(out, dim=0), 1
-
-    def fill_memory(self):
-        """
-        Pre-fills the replay memory with initial experiences by interacting with the environment using random actions.
-        """
-        for _ in tqdm(range(self.capacity // 3), desc="Initializing replay"):
-            state = self.env.reset()
-            done = False
-            while not done:
-                actions, _ = self.select_actions(state)
-                next_state, action, reward, done = self.env.step(actions)
-                self.replay_mem.store(state, actions, reward, next_state)
-                state = next_state
-
-    def update_epsilon(self, ep=0):
-        """
-         Updates the epsilon value for exploration based on the decay rate.
-        """
-        self.epsilon = max(self.epsilon_min, round(self.epsilon * self.decay, 4))
-
-        if ep == 15:
-            self.decay = 0.96
-
-    def update_target(self):
-        """
-        Updates the target network with weights from the policy network.
-        """
-        self.target_net.load_state_dict(self.policy_net.state_dict())
-
-    def save(self, model_name):
-        """
-        Saves the model state to disk.
-        """
-        torch.save(self.policy_net.state_dict(), f"models/{model_name}")
-
-    def load(self, model_name):
-        """
-        Loads a model state from disk and sets the network to evaluation mode.
-        """
-
-        self.policy_net.load_state_dict(torch.load(f"models/{model_name}"))
-        self.policy_net.eval()
-
-
-class ReplayMemory:
-    def __init__(self, capacity):
-        """
-        Initializes the ReplayMemory with a given capacity.
-        """
-        self.capacity = capacity
-        self.device = "gpu" if torch.cuda.is_available() else "cpu"
-        self.states = []
-        self.actions = []
-        self.next_states = []
-        self.rewards = []
-        self.ind = 0
-
-    def store(self, states, actions, rewards, next_states):
-        """
-        Stores or replaces an experience in the memory.
-        """
-        if len(self.states) < self.capacity:
-            self.states.append(states)
-            self.actions.append(actions)
-            self.next_states.append(next_states)
-            self.rewards.append(rewards)
+        self.steps = 0
+        
+        # Adaptive exploration
+        self.performance_history = deque(maxlen=50)
+        self.epsilon_boost_counter = 0
+        self.last_exploration_boost = 0
+        
+        # Curiosity-driven exploration
+        self.action_frequency = {0: 0, 1: 0, 2: 0}
+        self.state_visit_count = {}
+        
+        # Память для опыта
+        self.memory = deque(maxlen=memory_size)
+        
+        # Получаем размеры observation space
+        if len(obs_space.shape) == 3:
+            num_features, seq_len = obs_space.shape[1], obs_space.shape[2]
         else:
-            self.states[self.ind] = states
-            self.actions[self.ind] = actions
-            self.next_states[self.ind] = next_states
-            self.rewards[self.ind] = rewards
+            num_features, seq_len = obs_space.shape[0], obs_space.shape[1]
+        
+        print(f"🤖 Инициализация улучшенного агента v5:")
+        print(f"   Observation space: {obs_space.shape}")
+        print(f"   Features: {num_features}, Sequence: {seq_len}")
+        
+        # Создаем сеть с улучшенными параметрами
+        self.q_network = DQTN(
+            embeddings=embeddings,
+            heads=heads,
+            layers=layers,
+            fwex=fwex,
+            dropout=dropout,  # Немного увеличили dropout
+            neurons=neurons,
+            lr=lr,
+            view_size=seq_len
+        )
+        
+        self.device = self.q_network.device
+        print(f"   Устройство: {self.device}")
+        print(f"   Адаптивный epsilon: {epsilon} -> {epsilon_min}")
+        print(f"   Curiosity exploration: Включено")
 
-        self.ind = (self.ind + 1) % self.capacity
+    def remember(self, state, action, reward, next_state, done):
+        """Сохранение опыта в память с проверкой качества"""
+        # Простая фильтрация: избегаем дублирования слишком похожих состояний
+        if len(self.memory) > 0:
+            last_state, _, _, _, _ = self.memory[-1]
+            state_similarity = np.corrcoef(state.flatten(), last_state.flatten())[0, 1]
+            if state_similarity > 0.99:  # Слишком похожие состояния
+                return
+                
+        self.memory.append((state, action, reward, next_state, done))
 
-    def sample(self, batchsize):
-        """
-        Randomly samples a batch of experiences from memory.
-        """
-        indices_to_sample = random.sample(range(len(self.states)), k=batchsize)
+    def act(self, state, training=True):
+        """Улучшенный выбор действия с адаптивным exploration"""
+        if training:
+            # Адаптивный epsilon на основе производительности
+            current_epsilon = self._get_adaptive_epsilon()
+            
+            if np.random.random() <= current_epsilon:
+                # Curiosity-driven exploration
+                action = self._curiosity_action(state)
+            else:
+                # Exploitation через нейросеть
+                action = self._greedy_action(state)
+        else:
+            # В тестовом режиме только exploitation
+            action = self._greedy_action(state)
+        
+        # Обновляем статистики
+        self.action_frequency[action] += 1
+        
+        return action
 
-        states = np.array(self.states)[indices_to_sample]
-        actions = np.array(self.actions)[indices_to_sample]
-        next_states = np.array(self.next_states)[indices_to_sample]
-        rewards = np.array(self.rewards)[indices_to_sample]
+    def _get_adaptive_epsilon(self):
+        """Адаптивный epsilon на основе производительности"""
+        base_epsilon = self.epsilon
+        
+        # Если производительность плохая, увеличиваем exploration
+        if len(self.performance_history) >= 10:
+            recent_performance = np.mean(list(self.performance_history)[-10:])
+            if recent_performance < -0.01:  # Плохая производительность
+                boost_factor = min(2.0, 1.0 + abs(recent_performance) * 10)
+                return min(0.8, base_epsilon * boost_factor)
+        
+        return base_epsilon
 
-        return states, actions, rewards, next_states
+    def _curiosity_action(self, state):
+        """Curiosity-driven exploration - выбираем менее частые действия"""
+        # Находим наименее используемое действие
+        min_freq = min(self.action_frequency.values())
+        least_used_actions = [action for action, freq in self.action_frequency.items() 
+                             if freq == min_freq]
+        
+        # Добавляем небольшую случайность
+        if np.random.random() < 0.3:
+            return random.choice(least_used_actions)
+        else:
+            return random.randrange(self.action_size)
 
-    def __len__(self):
-        return len(self.states)
+    def _greedy_action(self, state):
+        """Жадное действие через нейросеть"""
+        q_values = self.q_network.predict(state)
+        return np.argmax(q_values)
+
+    def replay(self):
+        """Улучшенное обучение с regularization"""
+        if len(self.memory) < self.batch_size:
+            return 0.0
+        
+        # Выбираем случайный батч
+        batch = random.sample(self.memory, self.batch_size)
+        
+        states = np.array([e[0] for e in batch])
+        actions = np.array([e[1] for e in batch])
+        rewards = np.array([e[2] for e in batch])
+        next_states = np.array([e[3] for e in batch])
+        dones = np.array([e[4] for e in batch])
+        
+        # Обучаем сеть
+        loss = self.q_network.train_on_batch(
+            states, actions, rewards, next_states, dones, self.gamma
+        )
+        
+        # Адаптивное обновление epsilon
+        self._update_epsilon_adaptive(np.mean(rewards))
+        
+        return loss
+
+    def _update_epsilon_adaptive(self, batch_reward):
+        """Адаптивное обновление epsilon"""
+        # Сохраняем производительность
+        self.performance_history.append(batch_reward)
+        
+        # Стандартное снижение epsilon
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        
+        # Если долго нет улучшений, увеличиваем exploration
+        if len(self.performance_history) >= 20:
+            recent_avg = np.mean(list(self.performance_history)[-10:])
+            older_avg = np.mean(list(self.performance_history)[-20:-10])
+            
+            if recent_avg <= older_avg and self.steps - self.last_exploration_boost > 100:
+                self.epsilon = min(0.5, self.epsilon * 1.2)  # Boost exploration
+                self.last_exploration_boost = self.steps
+                print(f"🔍 Exploration boost! Epsilon: {self.epsilon:.3f}")
+
+    def update(self):
+        """Обновление агента после каждого шага"""
+        self.steps += 1
+        
+        # Более частое обучение для лучшей стабильности
+        if self.steps % self.update_freq == 0:
+            return self.replay()
+        
+        return 0.0
+
+    def get_exploration_stats(self):
+        """Статистика exploration"""
+        total_actions = sum(self.action_frequency.values())
+        if total_actions == 0:
+            return {"hold": 0, "buy": 0, "sell": 0}
+        
+        return {
+            "hold": self.action_frequency[0] / total_actions,
+            "buy": self.action_frequency[1] / total_actions, 
+            "sell": self.action_frequency[2] / total_actions
+        }
+
+    def save(self, filepath):
+        """Расширенное сохранение модели"""
+        torch.save({
+            'model_state_dict': self.q_network.state_dict(),
+            'optimizer_state_dict': self.q_network.optimizer.state_dict(),
+            'epsilon': self.epsilon,
+            'steps': self.steps,
+            'performance_history': list(self.performance_history),
+            'action_frequency': self.action_frequency
+        }, filepath)
+        print(f"💾 Модель v5 сохранена: {filepath}")
+
+    def load(self, filepath):
+        """Расширенная загрузка модели"""
+        try:
+            checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
+            self.q_network.load_state_dict(checkpoint['model_state_dict'])
+            self.q_network.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.epsilon = checkpoint.get('epsilon', self.epsilon)
+            self.steps = checkpoint.get('steps', 0)
+            
+            if 'performance_history' in checkpoint:
+                self.performance_history = deque(checkpoint['performance_history'], maxlen=50)
+            if 'action_frequency' in checkpoint:
+                self.action_frequency = checkpoint['action_frequency']
+                
+            print(f"📥 Модель v5 загружена: {filepath}")
+            return True
+        except Exception as e:
+            print(f"❌ Ошибка загрузки модели: {e}")
+            return False
+
+    def get_action_name(self, action):
+        """Получение названия действия"""
+        action_names = {0: "HOLD", 1: "BUY", 2: "SELL"}
+        return action_names.get(action, "UNKNOWN")
+
+    def get_stats(self):
+        """Расширенная статистика агента"""
+        exploration_stats = self.get_exploration_stats()
+        
+        return {
+            'epsilon': self.epsilon,
+            'memory_size': len(self.memory),
+            'steps': self.steps,
+            'device': str(self.device),
+            'performance_trend': np.mean(list(self.performance_history)[-10:]) if len(self.performance_history) >= 10 else 0,
+            'action_distribution': exploration_stats,
+            'exploration_balance': min(exploration_stats.values()) / max(exploration_stats.values()) if max(exploration_stats.values()) > 0 else 0
+        }

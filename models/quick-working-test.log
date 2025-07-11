@@ -1,0 +1,33 @@
+Quick Working Test - 2025-07-11 15:15:34.749186
+Config: {'episodes': 30, 'trading_period': 60, 'window': 30, 'commission': 0.0002, 'embeddings': 16, 'heads': 2, 'layers': 1, 'fwex': 64, 'dropout': 0.1, 'neurons': 64, 'lr': 0.001, 'epsilon': 0.8, 'epsilon_min': 0.05, 'epsilon_decay': 0.99, 'gamma': 0.95, 'memory_size': 5000, 'batch_size': 128, 'update_freq': 5}
+================================================================================
+Ep:   0 | Train: $-441 | OOS Med: $-1437
+    Trades: 12 | Win%: 41.7 | Steps: 60
+    Consistency: 0.0% | Epsilon: 0.800 | Best: $-1437
+    OOS profits: [-488, -1436, -1436]
+------------------------------------------------------------
+Ep:   5 | Train: $ 335 | OOS Med: $   0
+    Trades: 2 | Win%: 50.0 | Steps: 60
+    Consistency: 33.3% | Epsilon: 0.078 | Best: $0
+    OOS profits: [54, 0, 0]
+------------------------------------------------------------
+Ep:  10 | Train: $-452 | OOS Med: $-358
+    Trades: 3 | Win%: 0.0 | Steps: 60
+    Consistency: 33.3% | Epsilon: 0.050 | Best: $0
+    OOS profits: [269, -357, -357]
+------------------------------------------------------------
+Ep:  15 | Train: $ 311 | OOS Med: $ -56
+    Trades: 4 | Win%: 50.0 | Steps: 60
+    Consistency: 33.3% | Epsilon: 0.050 | Best: $0
+    OOS profits: [1163, -56, -167]
+------------------------------------------------------------
+Ep:  20 | Train: $-329 | OOS Med: $  72
+    Trades: 2 | Win%: 0.0 | Steps: 60
+    Consistency: 66.7% | Epsilon: 0.050 | Best: $72
+    OOS profits: [1282, 72, -92]
+------------------------------------------------------------
+Ep:  25 | Train: $-292 | OOS Med: $   0
+    Trades: 2 | Win%: 50.0 | Steps: 60
+    Consistency: 0.0% | Epsilon: 0.050 | Best: $72
+    OOS profits: [0, 0, 0]
+------------------------------------------------------------

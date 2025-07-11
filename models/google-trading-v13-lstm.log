@@ -1,0 +1,3 @@
+🧠 LSTM Training Log v13 - 2025-07-11 15:08:13.044776
+Config: {'episodes': 200, 'trading_period': 90, 'window': 40, 'target_profit': 500, 'commission': 0.0002, 'lstm_hidden': 128, 'lstm_layers': 2, 'fc_hidden': 64, 'dropout': 0.1, 'lr': 0.001, 'epsilon': 0.9, 'epsilon_min': 0.01, 'epsilon_decay': 0.995, 'gamma': 0.95, 'memory_size': 10000, 'batch_size': 256, 'update_freq': 5}
+================================================================================

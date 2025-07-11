@@ -1,0 +1,33 @@
+Simple Architecture Test - 2025-07-11 15:12:40.585940
+Config: {'episodes': 50, 'trading_period': 60, 'window': 30, 'commission': 0.0002, 'embeddings': 16, 'heads': 2, 'layers': 1, 'fwex': 64, 'dropout': 0.1, 'neurons': 64, 'lr': 0.001, 'epsilon': 0.8, 'epsilon_min': 0.05, 'epsilon_decay': 0.99, 'gamma': 0.95, 'memory_size': 5000, 'batch_size': 128, 'update_freq': 5}
+================================================================================
+Ep:   0 | Train: $ 170 | OOS Med: $   0
+    Trades: 12 | Win%: 50.0
+    OOS: Med $0, Mean $0, Consistency 0.0%
+    Epsilon: 0.800 | Best: $0
+    All OOS: [0, 0, 0]
+------------------------------------------------------------
+Ep:  10 | Train: $-739 | OOS Med: $  94
+    Trades: 10 | Win%: 40.0
+    OOS: Med $94, Mean $94, Consistency 100.0%
+    Epsilon: 0.050 | Best: $94
+    All OOS: [94, 94, 94]
+------------------------------------------------------------
+Ep:  20 | Train: $  52 | OOS Med: $   0
+    Trades: 1 | Win%: 100.0
+    OOS: Med $0, Mean $0, Consistency 0.0%
+    Epsilon: 0.050 | Best: $94
+    All OOS: [0, 0, 0]
+------------------------------------------------------------
+Ep:  30 | Train: $  93 | OOS Med: $   0
+    Trades: 6 | Win%: 33.3
+    OOS: Med $0, Mean $0, Consistency 0.0%
+    Epsilon: 0.050 | Best: $94
+    All OOS: [0, 0, 0]
+------------------------------------------------------------
+Ep:  40 | Train: $-377 | OOS Med: $-247
+    Trades: 3 | Win%: 33.3
+    OOS: Med $-247, Mean $-165, Consistency 0.0%
+    Epsilon: 0.050 | Best: $94
+    All OOS: [-246, -246, 0]
+------------------------------------------------------------
